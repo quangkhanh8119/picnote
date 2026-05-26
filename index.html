@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Picnote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link id="faviconLink" rel="icon" type="image/png" href=""/>
+  <!-- GA4 Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Lobster+Two:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Saira+Condensed:wght@300;400;600;700&family=Playwrite+England+Joined:wght@100..400&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- Hidden file inputs -->
+<input type="file" id="fileInput"   accept="image/*" multiple style="display:none"/>
+<input type="file" id="fileReplace" accept="image/*"          style="display:none"/>
+
+<!-- Floating image toolbar -->
+<div class="img-toolbar" id="imgToolbar">
+  <button class="itb-btn" id="itbRotate"  data-tip="Xoay">
+    <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+  </button>
+  <button class="itb-btn itb-active" id="itbReplace" data-tip="Thay ảnh">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+  </button>
+  <button class="itb-btn" id="itbFlip" data-tip="Lật ngang">
+    <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+  </button>
+  <button class="itb-btn" id="itbZoomIn"  data-tip="Phóng to">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+  </button>
+  <button class="itb-btn" id="itbZoomOut" data-tip="Thu nhỏ">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+  </button>
+  <div class="itb-sep"></div>
+  <button class="itb-btn itb-danger" id="itbDelete" data-tip="Xóa ảnh">
+    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+  </button>
+</div>
+
+<!-- Main board -->
+<main class="board-wrapper" id="boardWrapper">
+  <div class="board" id="board">
+    <div class="board-hint" id="boardHint">
+      <div class="hint-star">✦</div>
+      <p class="hint-title">Không gian sáng tạo của bạn</p>
+      <p class="hint-sub" id="hintSubP"><span id="hintSub">Thêm ảnh, chữ, sticker · Ctrl+V để dán ảnh</span></p>
+      <div class="hint-actions">
+        <button onclick="document.getElementById('fileInput').click()">+ Thêm ảnh</button>
+        <button onclick="document.getElementById('btnAddText').click()">+ Thêm chữ</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Right sidebar -->
+<nav class="sidebar" id="sidebar">
+  <button class="sb-btn" id="btnAddImage"   data-tip="Thêm ảnh từ máy">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+  </button>
+  <button class="sb-btn" id="btnAddUrl"     data-tip="Thêm ảnh từ URL">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+  </button>
+  <button class="sb-btn" id="btnAddText"    data-tip="Thêm chữ">
+    <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+  </button>
+  <button class="sb-btn" id="btnAddSticker" data-tip="Thêm sticker">
+    <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+  </button>
+  <div class="sb-sep"></div>
+  <button class="sb-btn" id="btnAutoSort"   data-tip="Auto sort">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+  </button>
+  <button class="sb-btn sb-share" id="btnShare" data-tip="Share link">
+    <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+  </button>
+  <button class="sb-btn sb-qr" id="btnQRShare" data-tip="Quick Share (QR)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="16"/><line x1="9" y1="7" x2="9" y2="17"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="14.5" y1="8" x2="14.5" y2="16"/><line x1="17" y1="7" x2="17" y2="17"/><line x1="19.5" y1="9" x2="19.5" y2="15"/><line x1="4" y1="9" x2="4" y2="15"/></svg>
+  </button>
+  <div class="sb-sep"></div>
+  <button class="sb-btn sb-info" id="btnInfo" data-tip="Giới thiệu & Donate">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  </button>
+  <div class="sb-sep"></div>
+  <button class="sb-btn sb-export" id="btnExport" data-tip="Xuất PNG">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  </button>
+  <button class="sb-btn sb-export-pdf" id="btnExportPDF" data-tip="Xuất PDF">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+  </button>
+  <button class="sb-btn sb-clear"  id="btnClear"  data-tip="Xóa board hiện tại">
+    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+  </button>
+
+</nav>
+
+<!-- Bottom bar -->
+<footer class="bottombar">
+  <div class="bb-left">
+    <span class="logo-small">✦ Picnote</span>
+    <span class="version-badge">v1.0.0</span>
+    <span class="current-board-label">Board <span id="currentBoardNum">1</span></span>
+    <div class="lang-toggle" id="langToggle">
+      <button class="lang-btn active" data-lang="vi" title="Tiếng Việt"><img src="data:image/png;base64,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" alt="VI" class="lang-flag"/></button>
+      <button class="lang-btn" data-lang="en" title="English"><img src="data:image/png;base64,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" alt="EN" class="lang-flag"/></button>
+    </div>
+  </div>
+  <div class="bb-center">
+    <span class="save-status" id="saveStatus" style="display:none">Đã lưu ✓</span>
+    <div class="board-tabs-inline" id="boardTabsInline">
+      <button class="tab-btn active" data-tab="1">1</button>
+      <button class="tab-btn" data-tab="2">2</button>
+      <button class="tab-btn" data-tab="3">3</button>
+      <button class="tab-btn" data-tab="4">4</button>
+      <button class="tab-btn" data-tab="5">5</button>
+      <button class="tab-btn" data-tab="6">6</button>
+      <button class="tab-btn" data-tab="7">7</button>
+      <button class="tab-btn" data-tab="8">8</button>
+      <button class="tab-btn" data-tab="9">9</button>
+    </div>
+  </div>
+  <div class="bb-right">
+    <span class="bg-label">Nền</span>
+    <div class="bg-options">
+      <span class="bg-opt active" data-bg="default" style="background:linear-gradient(135deg,#1a1510,#2d2219)" title="Dark"></span>
+      <span class="bg-opt" data-bg="black"   style="background:#000"                                           title="Black"></span>
+      <span class="bg-opt" data-bg="warm"    style="background:linear-gradient(135deg,#3d2b1f,#5c3d2e)"        title="Warm"></span>
+      <span class="bg-opt" data-bg="cream"   style="background:linear-gradient(135deg,#f5f0e8,#e8ddd0)"        title="Cream"></span>
+      <span class="bg-opt" data-bg="slate"   style="background:linear-gradient(135deg,#1c2333,#2a3449)"        title="Slate"></span>
+      <span class="bg-opt" data-bg="forest"  style="background:linear-gradient(135deg,#1a2416,#263820)"        title="Forest"></span>
+      <span class="bg-opt" data-bg="rose"    style="background:linear-gradient(135deg,#2d1c1c,#4a2828)"        title="Rose"></span>
+    </div>
+  </div>
+</footer>
+
+<!-- URL import modal -->
+<div class="modal-overlay" id="urlModal">
+  <div class="modal modal-url">
+    <div class="modal-header">
+      <span>Thêm ảnh từ URL</span>
+      <button class="modal-close" id="urlModalClose">✕</button>
+    </div>
+    <div class="text-controls">
+      <div class="ctrl-row">
+        <label>URL ảnh</label>
+        <input type="text" id="urlInput" class="url-input" placeholder="https://example.com/image.jpg"/>
+      </div>
+      <p class="url-hint">Dán link ảnh trực tiếp (jpg, png, webp…). Ảnh URL sẽ được chia sẻ khi dùng Share Link.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sec" id="urlModalCancel">Hủy</button>
+      <button class="btn-pri" id="urlModalAdd">Thêm ảnh</button>
+    </div>
+  </div>
+</div>
+
+<!-- Text modal -->
+<div class="modal-overlay" id="textModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>Chỉnh sửa chữ</span>
+      <button class="modal-close" id="textModalClose">✕</button>
+    </div>
+    <textarea class="text-input" id="textContent" placeholder="Nhập nội dung..." rows="3"></textarea>
+    <div class="text-controls">
+      <div class="ctrl-row">
+        <label>Cỡ chữ</label>
+        <input type="range" id="fontSize" min="12" max="120" value="24"/>
+        <span id="fontSizeVal">24px</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Font</label>
+        <select id="fontFamily">
+          <option value="'Mulish',sans-serif">Mulish</option>
+          <option value="'Cormorant Garamond',serif">Cormorant Garamond</option>
+          <option value="Georgia,serif">Georgia</option>
+          <option value="'Helvetica Neue',sans-serif">Helvetica</option>
+          <option value="'Lobster Two',cursive">Lobster Two</option>
+          <option value="'Great Vibes',cursive">Great Vibes</option>
+          <option value="'Saira Condensed',sans-serif">Saira Condensed</option>
+          <option value="'Playwrite England Joined',cursive">Playwrite England Joined</option>
+          <option value="'VT323',monospace">VT323</option>
+        </select>
+      </div>
+      <div class="ctrl-row">
+        <label>Màu chữ</label>
+        <div class="swatches">
+          <span class="swatch" data-color="#f5f0e8" style="background:#f5f0e8;border:1px solid #888"></span>
+          <span class="swatch" data-color="#1a1510" style="background:#1a1510"></span>
+          <span class="swatch" data-color="#c9a96e" style="background:#c9a96e"></span>
+          <span class="swatch" data-color="#ffffff" style="background:#fff;border:1px solid #888"></span>
+          <span class="swatch" data-color="#000000" style="background:#000"></span>
+          <input type="color" id="colorPicker" value="#f5f0e8"/>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <label>Kiểu</label>
+        <div class="style-btns">
+          <button class="style-btn" data-style="bold"><b>B</b></button>
+          <button class="style-btn" data-style="italic"><i>I</i></button>
+          <button class="style-btn" data-style="underline"><u>U</u></button>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <label>Nền chữ</label>
+        <div class="swatches">
+          <span class="bg-swatch active" data-bg="transparent" style="background:transparent;border:2px dashed #666">∅</span>
+          <span class="bg-swatch" data-bg="rgba(0,0,0,0.65)"      style="background:rgba(0,0,0,.65)"></span>
+          <span class="bg-swatch" data-bg="rgba(255,255,255,0.85)" style="background:rgba(255,255,255,.85);border:1px solid #888"></span>
+          <span class="bg-swatch" data-bg="rgba(201,169,110,0.85)" style="background:rgba(201,169,110,.85)"></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sec" id="textModalCancel">Hủy</button>
+      <button class="btn-pri" id="textModalSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sticker modal -->
+<div class="modal-overlay" id="stickerModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <span>Chọn Sticker</span>
+      <button class="modal-close" id="stickerModalClose">✕</button>
+    </div>
+    <div class="sticker-grid" id="stickerGrid"></div>
+  </div>
+</div>
+
+<!-- Share modal -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal modal-share">
+    <div class="modal-header">
+      <span>Share Board <span id="shareBoardNum">1</span> — Preview</span>
+      <button class="modal-close" id="shareModalClose">✕</button>
+    </div>
+    <div class="share-toolbar">
+      <div class="share-filter-tabs" id="shareFilterRow">
+        <button class="share-tab active" data-filter="url">Ảnh URL</button>
+        <button class="share-tab" data-filter="local">Ảnh local</button>
+        <button class="share-tab" data-filter="all">Tất cả ảnh</button>
+      </div>
+      <button class="btn-pri" id="shareCopyLink">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Tải file sharing
+      </button>
+    </div>
+    <div class="share-note" id="shareNote"></div>
+    <div class="share-grid" id="shareGrid"></div>
+  </div>
+</div>
+
+<!-- QR Share modal -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal modal-qr">
+    <div class="modal-header">
+      <span>Quick Share — QR Code</span>
+      <button class="modal-close" id="qrModalClose">✕</button>
+    </div>
+    <div class="qr-body">
+      <p class="qr-note" id="qrNote"></p>
+      <p class="qr-subtitle" id="qrSubtitle">www.picnote.app</p>
+      <div class="qr-canvas-wrap" style="margin-top:6px;">
+        <canvas id="qrCanvas"></canvas>
+      </div>
+      <div class="qr-actions">
+        <button class="btn-pri" id="qrDownload">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="qrDownloadTxt">Tải QR</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info modal -->
+<div class="modal-overlay" id="infoModal">
+  <div class="modal modal-info">
+    <div class="modal-header">
+      <span>Về Picnote</span>
+      <button class="modal-close" id="infoModalClose">✕</button>
+    </div>
+    <div class="info-body">
+      <div class="info-logo-row">
+        <span class="info-logo">✦ Picnote</span>
+        <span class="info-ver">v1.0.0</span>
+      </div>
+      <p class="info-desc" id="infoDesc">Không gian sáng tạo để ghi chú, sắp xếp và chia sẻ những khoảnh khắc đẹp của bạn — từ nhiều nguồn khác nhau, theo phong cách của riêng mình.</p>
+      <div class="info-author">
+        <div class="info-row">
+          <span class="info-label" id="infoLabelAuthor">Tác giả</span>
+          <span class="info-val">Nguyễn Quang Khánh</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email</span>
+          <a class="info-val info-link" href="mailto:quangkhanh8119@gmail.com">quangkhanh8119@gmail.com</a>
+        </div>
+      </div>
+      <div class="info-donate">
+        <p class="donate-msg">☕ Nếu Picnote giúp bạn lưu giữ những khoảnh khắc đẹp, hãy mời tác giả một ly cà phê nhé!</p>
+        <button class="btn-coffee" id="btnCoffee">
+          <span>☕</span> Buy Me a Coffee
+        </button>
+        <div class="coffee-qr-wrap" id="coffeeQrWrap" style="display:none">
+          <img class="coffee-qr-img" id="coffeeQrImg" alt="MoMo QR" />
+          <p class="coffee-qr-label">Quét QR MoMo · VietQR · Napas 247</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
