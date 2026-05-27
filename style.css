@@ -65,7 +65,9 @@ body{background:#0d0b08;color:var(--cream);font-family:var(--font-d);-webkit-fon
 .hint-actions button:hover{background:rgba(201,169,110,.15);border-color:var(--gold)}
 
 /* ══ BOARD ITEMS ══ */
-.board-item{position:absolute;cursor:move;user-select:none;z-index:10}
+.board-item{position:absolute;cursor:move;user-select:none;z-index:10;
+  touch-action:none; /* prevent browser scroll hijack on mobile */
+}
 .board-item.dragging{opacity:.93;z-index:200}
 
 /* ── Polaroid ── */

@@ -35,7 +35,7 @@ let pendingText = {};
 let textMode  = 'add';
 let currentBoard = 1;   // default board 1
 
-const PAD_BTM   = 260;
+const PAD_BTM   = 100;
 const ZOOM_STEP = 1.20;
 const POL_PAD   = 8;
 const CAP_H     = 46;
@@ -134,10 +134,27 @@ function showSaveOK(){
 /* ══════════════════════════════════
    BOARD HEIGHT
    ══════════════════════════════════ */
+const BOARD_MIN_H = 900; // minimum board height in px
+
 function applyBoardHeight(){ board.style.minHeight = boardH+'px'; }
-function expandIfNeeded(y,h){
-  const need = y+h+PAD_BTM;
-  if(need>boardH){ boardH=need; applyBoardHeight(); debounceSave(); }
+
+function expandIfNeeded(y, h){
+  const need = y + h + PAD_BTM;
+  if(need > boardH){ boardH = need; applyBoardHeight(); debounceSave(); }
+}
+
+/* Recalculate board height from ALL current item positions.
+   Called after drag/resize/keyboard-nudge ends so board shrinks
+   when items are moved upward. */
+function recalcBoardHeight(){
+  let maxY = BOARD_MIN_H;
+  items.forEach(item => {
+    const bottom = item.y + totalItemH(item) + PAD_BTM;
+    if(bottom > maxY) maxY = bottom;
+  });
+  boardH = maxY;
+  applyBoardHeight();
+  debounceSave();
 }
 
 /* ══════════════════════════════════
@@ -325,12 +342,22 @@ function positionToolbar(el){
 
 /* ══════════════════════════════════
    DRAG / RESIZE / ROTATE
+   (Mouse + Touch unified)
    ══════════════════════════════════ */
 function getBoardPos(cx,cy){ const r=board.getBoundingClientRect(); return{x:cx-r.left,y:cy-r.top}; }
 
-board.addEventListener('mousedown', onBoardDown);
+/* Extract {clientX, clientY} from either a MouseEvent or a TouchEvent */
+function getEventXY(e){
+  if(e.touches && e.touches.length>0)  return {x:e.touches[0].clientX,    y:e.touches[0].clientY};
+  if(e.changedTouches && e.changedTouches.length>0) return {x:e.changedTouches[0].clientX, y:e.changedTouches[0].clientY};
+  return {x:e.clientX, y:e.clientY};
+}
+
+board.addEventListener('mousedown',  onBoardDown);
+board.addEventListener('touchstart', onBoardDown, {passive:false});
 
 function onBoardDown(e){
+  const {x:clientX, y:clientY} = getEventXY(e);
   const target=e.target; const itemEl=target.closest('.board-item');
   if(!itemEl){deselectAll();return;}
   const id=itemEl.dataset.id; const item=items.find(i=>i.id===id); if(!item) return;
@@ -339,32 +366,41 @@ function onBoardDown(e){
   if(target.dataset.action==='rotate'){
     e.preventDefault();
     const r=itemEl.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;
-    rotating={id,cx,cy,start:Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI,init:item.rotation||0};
+    rotating={id,cx,cy,start:Math.atan2(clientY-cy,clientX-cx)*180/Math.PI,init:item.rotation||0};
     return;
   }
   if(target.dataset.action==='resize'){
     e.preventDefault();
-    const pos=getBoardPos(e.clientX,e.clientY);
+    const pos=getBoardPos(clientX,clientY);
     resizing={id,dir:target.dataset.dir,mx:pos.x,my:pos.y,
       sw:item.w,sh:item.h,sx:item.x,sy:item.y,
       ratio:item.type==='image'?item.w/item.h:null};
     return;
   }
-  if(e.button===0){
+  /* Drag — allow for both mouse left-button and any touch */
+  const isTouch = e.type === 'touchstart';
+  if(isTouch || e.button===0){
     e.preventDefault();
-    const pos=getBoardPos(e.clientX,e.clientY);
+    const pos=getBoardPos(clientX,clientY);
     dragging={id,offX:pos.x-item.x,offY:pos.y-item.y};
     itemEl.classList.add('dragging'); item.zIndex=++zCtr; itemEl.style.zIndex=zCtr;
   }
 }
 
-document.addEventListener('mousemove',onMouseMove);
-document.addEventListener('mouseup',onMouseUp);
+document.addEventListener('mousemove',  onMouseMove);
+document.addEventListener('touchmove',  onMouseMove, {passive:false});
+document.addEventListener('mouseup',    onMouseUp);
+document.addEventListener('touchend',   onMouseUp);
+document.addEventListener('touchcancel',onMouseUp);
 
 function onMouseMove(e){
+  if(!dragging && !resizing && !rotating) return;
+  e.preventDefault(); // prevent page scroll while dragging on mobile
+  const {x:clientX, y:clientY} = getEventXY(e);
+
   if(dragging){
     const item=items.find(i=>i.id===dragging.id); if(!item) return;
-    const pos=getBoardPos(e.clientX,e.clientY);
+    const pos=getBoardPos(clientX,clientY);
     item.x=Math.max(0,pos.x-dragging.offX); item.y=Math.max(0,pos.y-dragging.offY);
     updateItemDOM(item.id); expandIfNeeded(item.y,totalItemH(item));
     if(item.type==='image') positionToolbar(board.querySelector(`[data-id="${item.id}"]`));
@@ -372,7 +408,7 @@ function onMouseMove(e){
   }
   if(resizing){
     const item=items.find(i=>i.id===resizing.id); if(!item) return;
-    const pos=getBoardPos(e.clientX,e.clientY);
+    const pos=getBoardPos(clientX,clientY);
     const dx=pos.x-resizing.mx,dy=pos.y-resizing.my,dir=resizing.dir;
     let nW=resizing.sw,nH=resizing.sh,nX=resizing.sx,nY=resizing.sy;
     if(resizing.ratio){
@@ -398,7 +434,7 @@ function onMouseMove(e){
   }
   if(rotating){
     const item=items.find(i=>i.id===rotating.id); if(!item) return;
-    const a=Math.atan2(e.clientY-rotating.cy,e.clientX-rotating.cx)*180/Math.PI;
+    const a=Math.atan2(clientY-rotating.cy,clientX-rotating.cx)*180/Math.PI;
     item.rotation=rotating.init+(a-rotating.start);
     updateItemDOM(item.id);
     if(item.type==='image') positionToolbar(board.querySelector(`[data-id="${item.id}"]`));
@@ -406,8 +442,12 @@ function onMouseMove(e){
   }
 }
 function onMouseUp(){
+  const wasDragging  = !!dragging;
+  const wasResizing  = !!resizing;
+  const wasRotating  = !!rotating;
   if(dragging){board.querySelector(`[data-id="${dragging.id}"]`)?.classList.remove('dragging');dragging=null;}
   resizing=null; rotating=null;
+  if(wasDragging || wasResizing || wasRotating) recalcBoardHeight();
 }
 
 /* ══════════════════════════════════
@@ -1008,6 +1048,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowRight') item.x+=step;
     updateItemDOM(item.id);
     if(item.type==='image') positionToolbar(board.querySelector(`[data-id="${item.id}"]`));
+    recalcBoardHeight();
     debounceSave();
   }
 });
