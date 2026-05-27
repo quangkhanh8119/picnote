@@ -1605,7 +1605,7 @@ const TRANSLATIONS = {
     'Auto sort':'Auto sort',
     'Share link':'Share link',
     'Quick Share (QR)':'Quick Share (QR)',
-    'Giới thiệu & Donate':'Giới thiệu & Donate',
+    'Giới thiệu & Donate':'Giới thiệu',
     'Xuất PNG':'Xuất PNG',
     'Xuất PDF':'Xuất PDF',
     'Xóa board hiện tại':'Xóa board hiện tại',
