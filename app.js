@@ -364,22 +364,83 @@ function getEventXY(e){
   return {x:e.clientX, y:e.clientY};
 }
 
+/* ── Long-press threshold for touch (ms) ──
+   Quick tap = scroll, hold = select/drag. Mouse responds immediately. */
+const TOUCH_HOLD_MS = 180;
+let touchHoldTimer = null;
+let touchHoldStart = null; // {clientX, clientY, itemEl, id}
+const TOUCH_MOVE_CANCEL = 8; // px — cancel hold if finger drifts this far
+
+function clearTouchHold(){
+  clearTimeout(touchHoldTimer);
+  touchHoldTimer = null;
+  touchHoldStart = null;
+}
+
 board.addEventListener('mousedown',  onBoardDown);
-board.addEventListener('touchstart', onBoardDown, {passive:false});
+board.addEventListener('touchstart', onBoardDown, {passive:true}); // passive=true lets board scroll freely
 
 function onBoardDown(e){
-  /* 2-finger touch is handled by the pinch listener — ignore here */
+  /* 2-finger touch → pinch listener handles it */
   if(e.touches && e.touches.length >= 2) return;
   const {x:clientX, y:clientY} = getEventXY(e);
-  const target=e.target; const itemEl=target.closest('.board-item');
-  if(!itemEl){deselectAll();return;}
-  const id=itemEl.dataset.id; const item=items.find(i=>i.id===id); if(!item) return;
+  const target  = e.target;
+  const itemEl  = target.closest('.board-item');
+  const isTouch = e.type === 'touchstart';
+
+  if(!itemEl){
+    if(!isTouch) deselectAll();
+    return;
+  }
+
+  const id   = itemEl.dataset.id;
+  const item = items.find(i => i.id === id);
+  if(!item) return;
   if(target.closest('.pol-caption')) return;
+
+  if(isTouch){
+    /* Record where the touch started; commit after TOUCH_HOLD_MS if finger hasn't moved */
+    clearTouchHold();
+    touchHoldStart = { clientX, clientY, itemEl, id, target };
+    touchHoldTimer = setTimeout(() => {
+      if(!touchHoldStart) return;
+      const {itemEl, id, target, clientX, clientY} = touchHoldStart;
+      touchHoldStart = null;
+      const item = items.find(i => i.id === id);
+      if(!item) return;
+      selectItem(id);
+      itemEl.classList.add('dragging');
+      item.zIndex = ++zCtr;
+      itemEl.style.zIndex = zCtr;
+      const pos = getBoardPos(clientX, clientY);
+      if(target.dataset.action === 'rotate'){
+        const r = itemEl.getBoundingClientRect();
+        rotating = {id, cx:r.left+r.width/2, cy:r.top+r.height/2,
+          start:Math.atan2(clientY-(r.top+r.height/2), clientX-(r.left+r.width/2))*180/Math.PI,
+          init: item.rotation||0};
+        itemEl.classList.remove('dragging');
+        return;
+      }
+      if(target.dataset.action === 'resize'){
+        resizing = {id, dir:target.dataset.dir, mx:pos.x, my:pos.y,
+          sw:item.w, sh:item.h, sx:item.x, sy:item.y,
+          ratio: item.type==='image' ? item.w/item.h : null};
+        itemEl.classList.remove('dragging');
+        return;
+      }
+      dragging = {id, offX:pos.x-item.x, offY:pos.y-item.y};
+    }, TOUCH_HOLD_MS);
+    return; /* No preventDefault → board can still scroll on quick swipe */
+  }
+
+  /* ── Mouse: immediate response ── */
   selectItem(id);
   if(target.dataset.action==='rotate'){
     e.preventDefault();
-    const r=itemEl.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;
-    rotating={id,cx,cy,start:Math.atan2(clientY-cy,clientX-cx)*180/Math.PI,init:item.rotation||0};
+    const r=itemEl.getBoundingClientRect();
+    rotating={id,cx:r.left+r.width/2,cy:r.top+r.height/2,
+      start:Math.atan2(clientY-(r.top+r.height/2),clientX-(r.left+r.width/2))*180/Math.PI,
+      init:item.rotation||0};
     return;
   }
   if(target.dataset.action==='resize'){
@@ -390,9 +451,7 @@ function onBoardDown(e){
       ratio:item.type==='image'?item.w/item.h:null};
     return;
   }
-  /* Drag — allow for both mouse left-button and any touch */
-  const isTouch = e.type === 'touchstart';
-  if(isTouch || e.button===0){
+  if(e.button===0){
     e.preventDefault();
     const pos=getBoardPos(clientX,clientY);
     dragging={id,offX:pos.x-item.x,offY:pos.y-item.y};
@@ -404,6 +463,16 @@ document.addEventListener('mousemove',  onMouseMove);
 /* touchmove is handled in the pinch section below — supports both pinch and single-touch drag */
 document.addEventListener('mouseup',    onMouseUp);
 /* touchend/touchcancel handled in pinch section below */
+
+/* Cancel long-press hold if finger drifts — user is scrolling */
+document.addEventListener('touchmove', e => {
+  if(touchHoldStart && e.touches.length === 1){
+    const t = e.touches[0];
+    const dx = t.clientX - touchHoldStart.clientX;
+    const dy = t.clientY - touchHoldStart.clientY;
+    if(Math.hypot(dx, dy) > TOUCH_MOVE_CANCEL) clearTouchHold();
+  }
+}, {passive:true});
 
 /* ── Pinch-to-zoom + two-finger rotate on mobile ── */
 let pinchState = null; // {id, startDist, startAngle, startW, startH, startRotation}
@@ -460,6 +529,7 @@ document.addEventListener('touchmove', e => {
 
 /* Single touchend/cancel → onMouseUp; also clean up pinch state */
 document.addEventListener('touchend', e => {
+  clearTouchHold(); /* finger lifted before hold completed = was a tap/scroll, not drag */
   if(pinchState && e.touches.length < 2){
     debounceSave();
     recalcBoardHeight();
@@ -469,6 +539,7 @@ document.addEventListener('touchend', e => {
   onMouseUp();
 });
 document.addEventListener('touchcancel', () => {
+  clearTouchHold();
   pinchState = null;
   onMouseUp();
 });

@@ -528,3 +528,76 @@ body{background:#0d0b08;color:var(--cream);font-family:var(--font-d);-webkit-fon
   outline:2px dashed var(--gold);outline-offset:6px;border-radius:6px;
 }
 
+
+.polaroid{position:relative}
+
+
+/* ══════════════════════════════════════════
+   MOBILE / TABLET responsive (≤ 600px)
+   ══════════════════════════════════════════ */
+@media (max-width: 600px) {
+
+  /* ── Caption scales with polaroid width ──
+     Use container query fallback via CSS clamp:
+     minimum 10px, scales with viewport, max 14px */
+  .pol-caption{
+    font-size: clamp(9px, 2.8vw, 14px) !important;
+    letter-spacing: .06em;
+  }
+
+  /* ── Sidebar collapses to bottom FAB bar ── */
+  :root{ --sb-w: 0px; }
+
+  .sidebar{
+    /* Hide vertical sidebar on mobile */
+    display: none !important;
+  }
+
+  /* Bottom floating action bar — Canva-style */
+  .mobile-fab-bar{
+    display: flex !important;
+  }
+
+  /* Board uses full width */
+  .board-wrapper{
+    right: 0 !important;
+    bottom: calc(var(--bb-h) + var(--mob-fab-h)) !important;
+  }
+
+  /* Bottom bar compact on mobile */
+  :root{ --bb-h: 38px; --mob-fab-h: 58px; }
+  .version-badge{ display: none; }
+  .current-board-label{ display: none; }
+  .board-tabs-inline .tab-btn{ width: 22px; height: 22px; font-size: 10px; }
+
+  /* Image toolbar smaller on mobile */
+  .img-toolbar{ padding: 4px 6px; gap: 1px; border-radius: 24px; }
+  .itb-btn{ width: 32px; height: 32px; }
+  .itb-btn svg{ width: 14px; height: 14px; }
+}
+
+/* ── Mobile FAB bar (hidden on desktop) ── */
+.mobile-fab-bar{
+  display: none; /* shown via media query above */
+  position: fixed;
+  bottom: var(--bb-h);
+  left: 0; right: 0;
+  height: var(--mob-fab-h, 58px);
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  z-index: 899;
+}
+.mob-btn{
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: transparent; border: none; color: rgba(245,240,232,.7);
+  cursor: pointer; padding: 6px 10px; border-radius: 8px;
+  transition: background .15s, color .15s; flex: 1;
+}
+.mob-btn svg{ width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.mob-btn span{ font-family: var(--font-m); font-size: 9px; letter-spacing: .06em; color: var(--muted); }
+.mob-btn:hover, .mob-btn:active{ background: rgba(201,169,110,.15); color: var(--cream); }
+.mob-btn span{ color: inherit; opacity: .7; }
