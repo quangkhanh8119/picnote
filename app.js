@@ -3,6 +3,18 @@
    Multi-board (1-9) · URL images · Auto-sort · Share
    ══════════════════════════════════════════════════ */
 
+/* ── Feature Flags ──────────────────────────────────
+   Set to true/false to enable/disable features.
+   FEAT_QR_SHARE: Quick Share QR — currently uses URL
+   fragment encoding which produces dense QR codes and
+   is not truly "unique" per share session. Disabled
+   until a backend (e.g. Cloudflare Worker + KV) is
+   available to generate short unique share IDs.
+   ─────────────────────────────────────────────────── */
+const FEATURE_FLAGS = {
+  QR_SHARE: false,  // TODO: re-enable when backend short-URL is ready
+};
+
 /* ── IndexedDB ── */
 const DB_NAME='VisionBoardDB', DB_VER=4, STORE='boards', META_STORE='meta';
 
@@ -265,9 +277,8 @@ function buildPolaroid(el,item){
   capEl.addEventListener('blur',()=>{
     const it=items.find(i=>i.id===el.dataset.id); if(!it) return;
     it.caption=it.caption||{};
-    const txt=capEl.textContent.trim();
-    it.caption.text=txt||DEFAULT_CAP;
-    if(!txt) capEl.textContent=DEFAULT_CAP;
+    /* Allow empty caption — no forced default on blur */
+    it.caption.text=capEl.textContent.trim();
     debounceSave();
   });
   capEl.addEventListener('keydown',e=>{ if(e.key==='Escape'){capEl.blur();} }); // Enter = new line
@@ -290,7 +301,7 @@ function updateItemDOM(id){
     if(img){img.src=item.data.src;img.classList.toggle('flipped',!!item.data.flipped);}
     if(capEl&&!capEl.matches(':focus')){
       const c=item.caption||{};
-      capEl.textContent=c.text||DEFAULT_CAP;
+      capEl.textContent=c.text||'';
       capEl.style.fontSize=(c.fontSize||16)+'px';
       capEl.style.color=c.color||'#2a1f0f';
       capEl.style.fontFamily=c.fontFamily||"'Mulish',sans-serif";
@@ -357,6 +368,8 @@ board.addEventListener('mousedown',  onBoardDown);
 board.addEventListener('touchstart', onBoardDown, {passive:false});
 
 function onBoardDown(e){
+  /* 2-finger touch is handled by the pinch listener — ignore here */
+  if(e.touches && e.touches.length >= 2) return;
   const {x:clientX, y:clientY} = getEventXY(e);
   const target=e.target; const itemEl=target.closest('.board-item');
   if(!itemEl){deselectAll();return;}
@@ -388,10 +401,77 @@ function onBoardDown(e){
 }
 
 document.addEventListener('mousemove',  onMouseMove);
-document.addEventListener('touchmove',  onMouseMove, {passive:false});
+/* touchmove is handled in the pinch section below — supports both pinch and single-touch drag */
 document.addEventListener('mouseup',    onMouseUp);
-document.addEventListener('touchend',   onMouseUp);
-document.addEventListener('touchcancel',onMouseUp);
+/* touchend/touchcancel handled in pinch section below */
+
+/* ── Pinch-to-zoom + two-finger rotate on mobile ── */
+let pinchState = null; // {id, startDist, startAngle, startW, startH, startRotation}
+
+function getTouchDist(t1, t2){
+  return Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY);
+}
+function getTouchAngle(t1, t2){
+  return Math.atan2(t2.clientY-t1.clientY, t2.clientX-t1.clientX) * 180/Math.PI;
+}
+
+board.addEventListener('touchstart', e => {
+  /* Only handle 2-finger gesture here; single touch is handled by onBoardDown above */
+  if(e.touches.length !== 2) return;
+  const itemEl = e.target.closest('.board-item');
+  if(!itemEl) return;
+  const id   = itemEl.dataset.id;
+  const item = items.find(i => i.id === id);
+  if(!item || item.type !== 'image') return;
+  e.preventDefault();
+  e.stopPropagation(); /* prevent onBoardDown from also firing */
+  /* cancel any ongoing single-finger drag */
+  if(dragging){ itemEl.classList.remove('dragging'); dragging=null; }
+  pinchState = {
+    id,
+    startDist:     getTouchDist(e.touches[0], e.touches[1]),
+    startAngle:    getTouchAngle(e.touches[0], e.touches[1]),
+    startW:        item.w,
+    startH:        item.h,
+    startRotation: item.rotation || 0,
+  };
+}, {passive:false});
+
+document.addEventListener('touchmove', e => {
+  /* Pinch gesture — handled separately from single-touch drag */
+  if(pinchState && e.touches.length === 2){
+    e.preventDefault();
+    const item = items.find(i => i.id === pinchState.id);
+    if(!item) return;
+    const dist   = getTouchDist(e.touches[0], e.touches[1]);
+    const angle  = getTouchAngle(e.touches[0], e.touches[1]);
+    const scale  = dist / pinchState.startDist;
+    const dAngle = angle - pinchState.startAngle;
+    item.w = Math.max(60, Math.round(pinchState.startW * scale));
+    item.h = Math.round(item.w / (pinchState.startW / pinchState.startH));
+    item.rotation = pinchState.startRotation + dAngle;
+    updateItemDOM(item.id);
+    positionToolbar(board.querySelector(`[data-id="${item.id}"]`));
+    return; /* don't fall through to single-touch handler */
+  }
+  /* Single-touch drag/resize/rotate delegated to onMouseMove */
+  onMouseMove(e);
+}, {passive:false});
+
+/* Single touchend/cancel → onMouseUp; also clean up pinch state */
+document.addEventListener('touchend', e => {
+  if(pinchState && e.touches.length < 2){
+    debounceSave();
+    recalcBoardHeight();
+    pinchState = null;
+    return;
+  }
+  onMouseUp();
+});
+document.addEventListener('touchcancel', () => {
+  pinchState = null;
+  onMouseUp();
+});
 
 function onMouseMove(e){
   if(!dragging && !resizing && !rotating) return;
@@ -1487,7 +1567,13 @@ endobj
 /* ══════════════════════════════════
    QUICK SHARE — QR Code
    ══════════════════════════════════ */
-document.getElementById('btnQRShare').addEventListener('click', openQRModal);
+document.getElementById('btnQRShare').addEventListener('click', () => {
+  if(!FEATURE_FLAGS.QR_SHARE){
+    showToast('Quick Share QR sẽ sớm ra mắt ✦');
+    return;
+  }
+  openQRModal();
+});
 document.getElementById('qrModalClose').addEventListener('click', () => document.getElementById('qrModal').classList.remove('open'));
 document.getElementById('qrModal').addEventListener('click', e => { if (e.target === document.getElementById('qrModal')) document.getElementById('qrModal').classList.remove('open'); });
 
@@ -1668,7 +1754,7 @@ const TRANSLATIONS = {
     'Auto sort':'Auto sort',
     'Share link':'Share link',
     'Quick Share (QR)':'Quick Share (QR)',
-    'Giới thiệu & Donate':'About & Donate',
+    'Giới thiệu & Donate':'About',
     'Xuất PNG':'Export PNG',
     'Xuất PDF':'Export PDF',
     'Xóa board hiện tại':'Clear current board',
@@ -2009,6 +2095,16 @@ async function init(){
   currentLang = localStorage.getItem(LANG_KEY) || 'vi';
   applyLang();
   setFavicon();
+  /* Apply feature flags */
+  applyFeatureFlags();
+}
+
+function applyFeatureFlags(){
+  /* QR Share button — hide when feature is disabled */
+  const qrBtn = document.getElementById('btnQRShare');
+  if(qrBtn){
+    qrBtn.style.display   = FEATURE_FLAGS.QR_SHARE ? '' : 'none';
+  }
 }
 
 init();
