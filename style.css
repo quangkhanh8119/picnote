@@ -647,3 +647,38 @@ body{background:#0d0b08;color:var(--cream);font-family:var(--font-d);-webkit-fon
   .board{ background-color: #000 !important; }
   .board.bg-black{ background-color: #000 !important; }
 }
+
+/* ══ Drag handle — touch devices ══
+   Hidden on desktop (mouse), shown on touch when item selected */
+.drag-handle{
+  position:absolute;
+  top:50%; left:-28px;
+  transform:translateY(-50%);
+  width:24px; height:44px;
+  background:rgba(201,169,110,.85);
+  border:2px solid rgba(255,255,255,.5);
+  border-radius:6px;
+  display:none; /* hidden by default (desktop) */
+  align-items:center; justify-content:center;
+  cursor:grab; z-index:102;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  color:#1a1510;
+  touch-action:none;
+}
+.drag-handle:active{cursor:grabbing; background:rgba(201,169,110,1);}
+.drag-handle svg{width:14px;height:28px;pointer-events:none}
+
+/* Show drag handle on touch devices when item is selected */
+@media (pointer: coarse){
+  .board-item.selected .drag-handle{
+    display:flex !important;
+  }
+  /* Slightly larger resize handles on touch */
+  .resize-handle{
+    width:14px !important; height:14px !important;
+  }
+  .resize-handle.nw{top:-7px;left:-7px}
+  .resize-handle.ne{top:-7px;right:-7px}
+  .resize-handle.sw{bottom:-7px;left:-7px}
+  .resize-handle.se{bottom:-7px;right:-7px}
+}
