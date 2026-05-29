@@ -238,12 +238,6 @@ function renderItem(item){
   rh.className='rotate-handle'; rh.textContent='↻'; rh.dataset.action='rotate';
   el.appendChild(rh);
 
-  /* drag-handle: shown on touch devices; user grabs this to move item */
-  const dh=document.createElement('div');
-  dh.className='drag-handle';
-  dh.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>';
-  el.appendChild(dh);
-
   /* All items get resize handles */
   ['nw','ne','sw','se'].forEach(d=>{
     const h=document.createElement('div');
@@ -370,41 +364,22 @@ function getEventXY(e){
   return {x:e.clientX, y:e.clientY};
 }
 
-/* ══════════════════════════════════
-   DRAG / RESIZE / ROTATE
-   Solution 1: drag-handle for touch
-   Solution 3: velocity detection
-   ══════════════════════════════════ */
-function getBoardPos(cx,cy){ const r=board.getBoundingClientRect(); return{x:cx-r.left,y:cy-r.top}; }
-
-function getEventXY(e){
-  if(e.touches && e.touches.length>0)  return {x:e.touches[0].clientX, y:e.touches[0].clientY};
-  if(e.changedTouches && e.changedTouches.length>0) return {x:e.changedTouches[0].clientX, y:e.changedTouches[0].clientY};
-  return {x:e.clientX, y:e.clientY};
-}
-
-/* ── Touch drag state for velocity detection ── */
-let touchDragIntent = null; // {startX, startY, startTime, committed}
-
-function isTouchDevice(){
-  return window.matchMedia('(pointer: coarse)').matches;
-}
-
 board.addEventListener('mousedown',  onBoardDown);
 board.addEventListener('touchstart', onBoardDown, {passive:false});
 
 function onBoardDown(e){
-  if(e.touches && e.touches.length >= 2) return; // pinch handles 2-finger
+  /* 2-finger touch → pinch listener handles it */
+  if(e.touches && e.touches.length >= 2) return;
 
   const {x:clientX, y:clientY} = getEventXY(e);
   const target  = e.target;
+  const itemEl  = target.closest('.board-item');
   const isTouch = e.type === 'touchstart';
 
-  /* ── Touch on empty board area → always scroll ── */
-  const itemEl = target.closest('.board-item');
+  /* Nothing selected + touch on empty board = let board scroll naturally (phones only) */
   if(!itemEl){
     deselectAll();
-    return; // no preventDefault → native scroll
+    return; /* no preventDefault → native scroll works */
   }
 
   const id   = itemEl.dataset.id;
@@ -412,154 +387,113 @@ function onBoardDown(e){
   if(!item) return;
   if(target.closest('.pol-caption')) return;
 
-  /* ── Touch device path ── */
-  if(isTouch){
-    /* Always select on tap — no delay */
+  /* On touch with no item currently selected: select only, allow scroll if finger moves */
+  if(isTouch && !selectedId){
+    e.preventDefault(); /* prevent scroll-jitter on select tap */
     selectItem(id);
-
-    /* Solution 1: on touch, only drag if touching the drag-handle OR a resize/rotate handle.
-       Touching anywhere else on the item = scroll board. */
-    const isDragHandle  = target.closest('.drag-handle');
-    const isActionHandle = target.dataset.action === 'resize' || target.dataset.action === 'rotate';
-
-    if(!isDragHandle && !isActionHandle){
-      /* Not on a handle → let board scroll naturally, item is just selected */
-      return; // no preventDefault → scroll works
-    }
-
-    e.preventDefault(); // we're committing to a drag/resize/rotate
-
-    if(target.dataset.action === 'rotate'){
-      const r = itemEl.getBoundingClientRect();
-      rotating = {id, cx:r.left+r.width/2, cy:r.top+r.height/2,
-        start:Math.atan2(clientY-(r.top+r.height/2), clientX-(r.left+r.width/2))*180/Math.PI,
-        init:item.rotation||0};
-      return;
-    }
-    if(target.dataset.action === 'resize'){
-      const pos = getBoardPos(clientX, clientY);
-      resizing = {id, dir:target.dataset.dir, mx:pos.x, my:pos.y,
-        sw:item.w, sh:item.h, sx:item.x, sy:item.y,
-        ratio:item.type==='image'?item.w/item.h:null};
-      return;
-    }
-    /* Drag from drag-handle: record start for velocity detection */
+    /* Start drag immediately — if user lifts finger quickly it just selects */
     const pos = getBoardPos(clientX, clientY);
     dragging = {id, offX:pos.x-item.x, offY:pos.y-item.y};
     itemEl.classList.add('dragging'); item.zIndex=++zCtr; itemEl.style.zIndex=zCtr;
-    touchDragIntent = {startX:clientX, startY:clientY, startTime:Date.now(), committed:false};
     return;
   }
 
-  /* ── Mouse path — immediate, unchanged ── */
+  /* Standard path — mouse or touch on already-selected item */
+  e.preventDefault();
   selectItem(id);
+
   if(target.dataset.action==='rotate'){
-    e.preventDefault();
     const r=itemEl.getBoundingClientRect();
-    rotating={id,cx:r.left+r.width/2,cy:r.top+r.height/2,
-      start:Math.atan2(clientY-(r.top+r.height/2),clientX-(r.left+r.width/2))*180/Math.PI,
+    rotating={id, cx:r.left+r.width/2, cy:r.top+r.height/2,
+      start:Math.atan2(clientY-(r.top+r.height/2), clientX-(r.left+r.width/2))*180/Math.PI,
       init:item.rotation||0};
     return;
   }
   if(target.dataset.action==='resize'){
-    e.preventDefault();
     const pos=getBoardPos(clientX,clientY);
-    resizing={id,dir:target.dataset.dir,mx:pos.x,my:pos.y,
-      sw:item.w,sh:item.h,sx:item.x,sy:item.y,
+    resizing={id, dir:target.dataset.dir, mx:pos.x, my:pos.y,
+      sw:item.w, sh:item.h, sx:item.x, sy:item.y,
       ratio:item.type==='image'?item.w/item.h:null};
     return;
   }
-  if(e.button===0){
-    e.preventDefault();
+  if(isTouch || e.button===0){
     const pos=getBoardPos(clientX,clientY);
-    dragging={id,offX:pos.x-item.x,offY:pos.y-item.y};
+    dragging={id, offX:pos.x-item.x, offY:pos.y-item.y};
     itemEl.classList.add('dragging'); item.zIndex=++zCtr; itemEl.style.zIndex=zCtr;
   }
 }
 
 document.addEventListener('mousemove',  onMouseMove);
-/* touchmove handled in pinch+velocity section below */
+/* touchmove handled in pinch section below */
 document.addEventListener('mouseup',    onMouseUp);
 /* touchend/touchcancel handled in pinch section below */
 
-/* ── Pinch-to-zoom + two-finger rotate ── */
-let pinchState = null;
+/* ── Pinch-to-zoom + two-finger rotate on mobile ── */
+let pinchState = null; // {id, startDist, startAngle, startW, startH, startRotation}
 
-function getTouchDist(t1,t2){ return Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY); }
-function getTouchAngle(t1,t2){ return Math.atan2(t2.clientY-t1.clientY,t2.clientX-t1.clientX)*180/Math.PI; }
+function getTouchDist(t1, t2){
+  return Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY);
+}
+function getTouchAngle(t1, t2){
+  return Math.atan2(t2.clientY-t1.clientY, t2.clientX-t1.clientX) * 180/Math.PI;
+}
 
 board.addEventListener('touchstart', e => {
+  /* Only handle 2-finger gesture here; single touch is handled by onBoardDown above */
   if(e.touches.length !== 2) return;
   const itemEl = e.target.closest('.board-item');
   if(!itemEl) return;
-  const id = itemEl.dataset.id;
-  const item = items.find(i=>i.id===id);
+  const id   = itemEl.dataset.id;
+  const item = items.find(i => i.id === id);
   if(!item || item.type !== 'image') return;
-  e.preventDefault(); e.stopPropagation();
+  e.preventDefault();
+  e.stopPropagation(); /* prevent onBoardDown from also firing */
+  /* cancel any ongoing single-finger drag */
   if(dragging){ itemEl.classList.remove('dragging'); dragging=null; }
-  touchDragIntent = null;
-  pinchState = {id,
-    startDist:  getTouchDist(e.touches[0],e.touches[1]),
-    startAngle: getTouchAngle(e.touches[0],e.touches[1]),
-    startW: item.w, startH: item.h, startRotation: item.rotation||0};
+  pinchState = {
+    id,
+    startDist:     getTouchDist(e.touches[0], e.touches[1]),
+    startAngle:    getTouchAngle(e.touches[0], e.touches[1]),
+    startW:        item.w,
+    startH:        item.h,
+    startRotation: item.rotation || 0,
+  };
 }, {passive:false});
 
 document.addEventListener('touchmove', e => {
-  /* Pinch */
-  if(pinchState && e.touches.length===2){
+  /* Pinch gesture — handled separately from single-touch drag */
+  if(pinchState && e.touches.length === 2){
     e.preventDefault();
-    const item=items.find(i=>i.id===pinchState.id); if(!item) return;
-    const dist=getTouchDist(e.touches[0],e.touches[1]);
-    const angle=getTouchAngle(e.touches[0],e.touches[1]);
-    const scale=dist/pinchState.startDist;
-    item.w=Math.max(60,Math.round(pinchState.startW*scale));
-    item.h=Math.round(item.w/(pinchState.startW/pinchState.startH));
-    item.rotation=pinchState.startRotation+(angle-pinchState.startAngle);
+    const item = items.find(i => i.id === pinchState.id);
+    if(!item) return;
+    const dist   = getTouchDist(e.touches[0], e.touches[1]);
+    const angle  = getTouchAngle(e.touches[0], e.touches[1]);
+    const scale  = dist / pinchState.startDist;
+    const dAngle = angle - pinchState.startAngle;
+    item.w = Math.max(60, Math.round(pinchState.startW * scale));
+    item.h = Math.round(item.w / (pinchState.startW / pinchState.startH));
+    item.rotation = pinchState.startRotation + dAngle;
     updateItemDOM(item.id);
     positionToolbar(board.querySelector(`[data-id="${item.id}"]`));
-    return;
+    return; /* don't fall through to single-touch handler */
   }
-
-  /* Solution 3: velocity detection during early drag (first 80ms) */
-  if(dragging && touchDragIntent && !touchDragIntent.committed && e.touches.length===1){
-    const t    = e.touches[0];
-    const dx   = t.clientX - touchDragIntent.startX;
-    const dy   = t.clientY - touchDragIntent.startY;
-    const dt   = Date.now() - touchDragIntent.startTime;
-    const dist = Math.hypot(dx, dy);
-
-    if(dt < 80){
-      /* Fast vertical movement = scroll intent → cancel drag */
-      const speed = dist / Math.max(dt, 1); // px/ms
-      if(Math.abs(dy) > Math.abs(dx) * 1.4 && speed > 0.4){
-        /* Abort drag, let scroll take over */
-        const el = board.querySelector(`[data-id="${dragging.id}"]`);
-        if(el) el.classList.remove('dragging');
-        dragging = null;
-        touchDragIntent = null;
-        return; // no preventDefault → browser scrolls
-      }
-    } else {
-      /* Past 80ms threshold — commit to drag */
-      touchDragIntent.committed = true;
-    }
-  }
-
-  if(dragging || resizing || rotating){
-    e.preventDefault();
-    onMouseMove(e);
-  }
+  /* Single-touch drag/resize/rotate delegated to onMouseMove */
+  onMouseMove(e);
 }, {passive:false});
 
+/* Single touchend/cancel → onMouseUp; also clean up pinch state */
 document.addEventListener('touchend', e => {
-  touchDragIntent = null;
-  if(pinchState && e.touches.length<2){
-    debounceSave(); recalcBoardHeight(); pinchState=null; return;
+  if(pinchState && e.touches.length < 2){
+    debounceSave();
+    recalcBoardHeight();
+    pinchState = null;
+    return;
   }
   onMouseUp();
 });
 document.addEventListener('touchcancel', () => {
-  touchDragIntent = null; pinchState=null; onMouseUp();
+  pinchState = null;
+  onMouseUp();
 });
 
 function onMouseMove(e){
@@ -2202,7 +2136,6 @@ function initMobileStatusBar(){
   /* Only apply on phone-sized screens (≤480px + touch, excludes tablets) */
   const isPhone = window.matchMedia('(max-width: 480px) and (pointer: coarse)').matches;
   if(!isPhone) return;
-
   /* Wire mobile board tab buttons (1-3) */
   document.querySelectorAll('.mob-status-boards .tab-btn').forEach(b => {
     b.addEventListener('click', () => switchBoard(+b.dataset.tab));
