@@ -50,7 +50,16 @@
 
 <!-- Main board -->
 <main class="board-wrapper" id="boardWrapper">
-  <div class="board" id="board">
+  <div class="mob-status-bar" id="mobStatusBar">
+    <div class="mob-status-boards">
+      <button class="tab-btn" data-tab="1">1</button>
+      <button class="tab-btn" data-tab="2">2</button>
+      <button class="tab-btn" data-tab="3">3</button>
+    </div>
+    <span class="mob-status-save" id="mobSaveStatus">✓</span>
+    <div class="lang-toggle mob-lang" id="mobLangToggle"></div>
+  </div>
+<div class="board" id="board">
     <div class="board-hint" id="boardHint">
       <div class="hint-star">✦</div>
       <p class="hint-title">Không gian sáng tạo của bạn</p>
@@ -324,31 +333,50 @@
 
 <!-- Mobile bottom FAB bar (visible on phones ≤ 600px) -->
 <div class="mobile-fab-bar" id="mobileFabBar">
-  <button class="mob-btn" id="mobBtnImage" onclick="document.getElementById('fileInput').click()">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-    <span>Ảnh</span>
-  </button>
-  <button class="mob-btn" id="mobBtnUrl" onclick="document.getElementById('btnAddUrl').click()">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-    <span>URL</span>
-  </button>
-  <button class="mob-btn" id="mobBtnText" onclick="document.getElementById('btnAddText').click()">
-    <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
-    <span>Chữ</span>
-  </button>
-  <button class="mob-btn" id="mobBtnSticker" onclick="document.getElementById('btnAddSticker').click()">
-    <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-    <span>Sticker</span>
-  </button>
-  <button class="mob-btn" id="mobBtnSort" onclick="document.getElementById('btnAutoSort').click()">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-    <span>Sort</span>
-  </button>
-  <button class="mob-btn" id="mobBtnMore" onclick="document.getElementById('btnInfo').click()">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-    <span>Thêm</span>
-  </button>
+  <div class="mob-scroll-track">
+    <button class="mob-btn" onclick="document.getElementById('fileInput').click()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      <span>Ảnh</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnAddUrl').click()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span>URL</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnAddText').click()">
+      <svg viewBox="0 0 24 24"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+      <span>Chữ</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnAddSticker').click()">
+      <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <span>Sticker</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnAutoSort').click()">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      <span>Sort</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnShare').click()">
+      <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      <span>Share</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnExport').click()">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>PNG</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnExportPDF').click()">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>PDF</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnClear').click()">
+      <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      <span>Xóa</span>
+    </button>
+    <button class="mob-btn" onclick="document.getElementById('btnInfo').click()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Info</span>
+    </button>
+  </div>
 </div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 

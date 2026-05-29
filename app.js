@@ -364,33 +364,22 @@ function getEventXY(e){
   return {x:e.clientX, y:e.clientY};
 }
 
-/* ── Long-press threshold for touch (ms) ──
-   Quick tap = scroll, hold = select/drag. Mouse responds immediately. */
-const TOUCH_HOLD_MS = 180;
-let touchHoldTimer = null;
-let touchHoldStart = null; // {clientX, clientY, itemEl, id}
-const TOUCH_MOVE_CANCEL = 8; // px — cancel hold if finger drifts this far
-
-function clearTouchHold(){
-  clearTimeout(touchHoldTimer);
-  touchHoldTimer = null;
-  touchHoldStart = null;
-}
-
 board.addEventListener('mousedown',  onBoardDown);
-board.addEventListener('touchstart', onBoardDown, {passive:true}); // passive=true lets board scroll freely
+board.addEventListener('touchstart', onBoardDown, {passive:false});
 
 function onBoardDown(e){
   /* 2-finger touch → pinch listener handles it */
   if(e.touches && e.touches.length >= 2) return;
+
   const {x:clientX, y:clientY} = getEventXY(e);
   const target  = e.target;
   const itemEl  = target.closest('.board-item');
   const isTouch = e.type === 'touchstart';
 
+  /* Nothing selected + touch on empty board = let board scroll naturally */
   if(!itemEl){
-    if(!isTouch) deselectAll();
-    return;
+    deselectAll();
+    return; /* no preventDefault → native scroll works */
   }
 
   const id   = itemEl.dataset.id;
@@ -398,81 +387,46 @@ function onBoardDown(e){
   if(!item) return;
   if(target.closest('.pol-caption')) return;
 
-  if(isTouch){
-    /* Record where the touch started; commit after TOUCH_HOLD_MS if finger hasn't moved */
-    clearTouchHold();
-    touchHoldStart = { clientX, clientY, itemEl, id, target };
-    touchHoldTimer = setTimeout(() => {
-      if(!touchHoldStart) return;
-      const {itemEl, id, target, clientX, clientY} = touchHoldStart;
-      touchHoldStart = null;
-      const item = items.find(i => i.id === id);
-      if(!item) return;
-      selectItem(id);
-      itemEl.classList.add('dragging');
-      item.zIndex = ++zCtr;
-      itemEl.style.zIndex = zCtr;
-      const pos = getBoardPos(clientX, clientY);
-      if(target.dataset.action === 'rotate'){
-        const r = itemEl.getBoundingClientRect();
-        rotating = {id, cx:r.left+r.width/2, cy:r.top+r.height/2,
-          start:Math.atan2(clientY-(r.top+r.height/2), clientX-(r.left+r.width/2))*180/Math.PI,
-          init: item.rotation||0};
-        itemEl.classList.remove('dragging');
-        return;
-      }
-      if(target.dataset.action === 'resize'){
-        resizing = {id, dir:target.dataset.dir, mx:pos.x, my:pos.y,
-          sw:item.w, sh:item.h, sx:item.x, sy:item.y,
-          ratio: item.type==='image' ? item.w/item.h : null};
-        itemEl.classList.remove('dragging');
-        return;
-      }
-      dragging = {id, offX:pos.x-item.x, offY:pos.y-item.y};
-    }, TOUCH_HOLD_MS);
-    return; /* No preventDefault → board can still scroll on quick swipe */
+  /* On touch with no item currently selected: select only, allow scroll if finger moves */
+  if(isTouch && !selectedId){
+    e.preventDefault(); /* prevent scroll-jitter on select tap */
+    selectItem(id);
+    /* Start drag immediately — if user lifts finger quickly it just selects */
+    const pos = getBoardPos(clientX, clientY);
+    dragging = {id, offX:pos.x-item.x, offY:pos.y-item.y};
+    itemEl.classList.add('dragging'); item.zIndex=++zCtr; itemEl.style.zIndex=zCtr;
+    return;
   }
 
-  /* ── Mouse: immediate response ── */
+  /* Standard path — mouse or touch on already-selected item */
+  e.preventDefault();
   selectItem(id);
+
   if(target.dataset.action==='rotate'){
-    e.preventDefault();
     const r=itemEl.getBoundingClientRect();
-    rotating={id,cx:r.left+r.width/2,cy:r.top+r.height/2,
-      start:Math.atan2(clientY-(r.top+r.height/2),clientX-(r.left+r.width/2))*180/Math.PI,
+    rotating={id, cx:r.left+r.width/2, cy:r.top+r.height/2,
+      start:Math.atan2(clientY-(r.top+r.height/2), clientX-(r.left+r.width/2))*180/Math.PI,
       init:item.rotation||0};
     return;
   }
   if(target.dataset.action==='resize'){
-    e.preventDefault();
     const pos=getBoardPos(clientX,clientY);
-    resizing={id,dir:target.dataset.dir,mx:pos.x,my:pos.y,
-      sw:item.w,sh:item.h,sx:item.x,sy:item.y,
+    resizing={id, dir:target.dataset.dir, mx:pos.x, my:pos.y,
+      sw:item.w, sh:item.h, sx:item.x, sy:item.y,
       ratio:item.type==='image'?item.w/item.h:null};
     return;
   }
-  if(e.button===0){
-    e.preventDefault();
+  if(isTouch || e.button===0){
     const pos=getBoardPos(clientX,clientY);
-    dragging={id,offX:pos.x-item.x,offY:pos.y-item.y};
+    dragging={id, offX:pos.x-item.x, offY:pos.y-item.y};
     itemEl.classList.add('dragging'); item.zIndex=++zCtr; itemEl.style.zIndex=zCtr;
   }
 }
 
 document.addEventListener('mousemove',  onMouseMove);
-/* touchmove is handled in the pinch section below — supports both pinch and single-touch drag */
+/* touchmove handled in pinch section below */
 document.addEventListener('mouseup',    onMouseUp);
 /* touchend/touchcancel handled in pinch section below */
-
-/* Cancel long-press hold if finger drifts — user is scrolling */
-document.addEventListener('touchmove', e => {
-  if(touchHoldStart && e.touches.length === 1){
-    const t = e.touches[0];
-    const dx = t.clientX - touchHoldStart.clientX;
-    const dy = t.clientY - touchHoldStart.clientY;
-    if(Math.hypot(dx, dy) > TOUCH_MOVE_CANCEL) clearTouchHold();
-  }
-}, {passive:true});
 
 /* ── Pinch-to-zoom + two-finger rotate on mobile ── */
 let pinchState = null; // {id, startDist, startAngle, startW, startH, startRotation}
@@ -529,7 +483,6 @@ document.addEventListener('touchmove', e => {
 
 /* Single touchend/cancel → onMouseUp; also clean up pinch state */
 document.addEventListener('touchend', e => {
-  clearTouchHold(); /* finger lifted before hold completed = was a tap/scroll, not drag */
   if(pinchState && e.touches.length < 2){
     debounceSave();
     recalcBoardHeight();
@@ -539,7 +492,6 @@ document.addEventListener('touchend', e => {
   onMouseUp();
 });
 document.addEventListener('touchcancel', () => {
-  clearTouchHold();
   pinchState = null;
   onMouseUp();
 });
@@ -2168,6 +2120,8 @@ async function init(){
   setFavicon();
   /* Apply feature flags */
   applyFeatureFlags();
+  /* Mobile status bar setup */
+  initMobileStatusBar();
 }
 
 function applyFeatureFlags(){
@@ -2175,6 +2129,42 @@ function applyFeatureFlags(){
   const qrBtn = document.getElementById('btnQRShare');
   if(qrBtn){
     qrBtn.style.display   = FEATURE_FLAGS.QR_SHARE ? '' : 'none';
+  }
+}
+
+function initMobileStatusBar(){
+  /* Wire mobile board tab buttons (1-3) */
+  document.querySelectorAll('.mob-status-boards .tab-btn').forEach(b => {
+    b.addEventListener('click', () => switchBoard(+b.dataset.tab));
+    b.classList.toggle('active', +b.dataset.tab === currentBoard);
+  });
+
+  /* Clone language toggle into mobile status bar */
+  const mobLang = document.getElementById('mobLangToggle');
+  const mainLang = document.getElementById('langToggle');
+  if(mobLang && mainLang){
+    mobLang.innerHTML = mainLang.innerHTML;
+    mobLang.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const newLang = btn.dataset.lang;
+        if(newLang === currentLang) return;
+        currentLang = newLang;
+        localStorage.setItem('picnote_lang', currentLang);
+        applyLang();
+        showToast(currentLang === 'en' ? 'Language: English' : 'Ngôn ngữ: Tiếng Việt');
+      });
+    });
+  }
+
+  /* Mirror save status to mobile bar */
+  const mobSave = document.getElementById('mobSaveStatus');
+  if(mobSave){
+    const observer = new MutationObserver(() => {
+      const mainStatus = document.getElementById('saveStatus');
+      if(mainStatus) mobSave.textContent = mainStatus.classList.contains('saving') ? '…' : '✓';
+    });
+    const mainStatus = document.getElementById('saveStatus');
+    if(mainStatus) observer.observe(mainStatus, {childList:true, characterData:true, subtree:true, attributes:true});
   }
 }
 
