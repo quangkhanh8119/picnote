@@ -376,7 +376,7 @@ function onBoardDown(e){
   const itemEl  = target.closest('.board-item');
   const isTouch = e.type === 'touchstart';
 
-  /* Nothing selected + touch on empty board = let board scroll naturally */
+  /* Nothing selected + touch on empty board = let board scroll naturally (phones only) */
   if(!itemEl){
     deselectAll();
     return; /* no preventDefault → native scroll works */
@@ -2133,6 +2133,9 @@ function applyFeatureFlags(){
 }
 
 function initMobileStatusBar(){
+  /* Only apply on phone-sized screens (≤480px + touch, excludes tablets) */
+  const isPhone = window.matchMedia('(max-width: 480px) and (pointer: coarse)').matches;
+  if(!isPhone) return;
   /* Wire mobile board tab buttons (1-3) */
   document.querySelectorAll('.mob-status-boards .tab-btn').forEach(b => {
     b.addEventListener('click', () => switchBoard(+b.dataset.tab));

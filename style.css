@@ -386,7 +386,7 @@ body{background:#0d0b08;color:var(--cream);font-family:var(--font-d);-webkit-fon
   .share-grid{columns:2}
   .tab-btn{width:22px;height:22px;font-size:10px}
 }
-@media(max-width:480px){
+@media(max-width:480px) and (pointer:coarse){
   :root{--sb-w:40px}
   .share-grid{columns:1}
   .modal-share{width:98vw}
@@ -533,71 +533,117 @@ body{background:#0d0b08;color:var(--cream);font-family:var(--font-d);-webkit-fon
 
 
 /* ══════════════════════════════════════════
-   MOBILE / TABLET responsive (≤ 600px)
+   MOBILE PHONE only (≤ 480px + touch)
+   Tablets (≥ 768px) keep desktop UI
    ══════════════════════════════════════════ */
-@media (max-width: 600px) {
 
-  /* ── Caption scales with polaroid width ──
-     Use container query fallback via CSS clamp:
-     minimum 10px, scales with viewport, max 14px */
-  .pol-caption{
-    font-size: clamp(9px, 2.8vw, 14px) !important;
-    letter-spacing: .06em;
+/* ── Mobile FAB scrollable toolbar (hidden on desktop) ── */
+.mobile-fab-bar{
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 62px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+  z-index: 950;
+  overflow: hidden;
+}
+.mob-scroll-track{
+  display: flex;
+  align-items: center;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 6px;
+  gap: 0;
+}
+.mob-scroll-track::-webkit-scrollbar{ display: none; }
+.mob-btn{
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; flex-shrink: 0;
+  min-width: 62px; height: 100%;
+  background: transparent; border: none;
+  color: rgba(245,240,232,.7);
+  cursor: pointer; padding: 8px 6px;
+  border-radius: 10px;
+  transition: background .15s, color .15s;
+  scroll-snap-align: start;
+}
+.mob-btn svg{
+  width: 22px; height: 22px;
+  fill: none; stroke: currentColor;
+  stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+}
+.mob-btn span{
+  font-family: var(--font-m); font-size: 9px;
+  letter-spacing: .05em; color: var(--muted);
+  white-space: nowrap;
+}
+.mob-btn:active{ background: rgba(201,169,110,.18); color: var(--gold-lt); }
+.mob-btn:active span{ color: var(--gold-lt); }
+
+/* Mobile top status bar — scrolls with board */
+.mob-status-bar{
+  display: none; /* shown in media query */
+  position: sticky; top: 0;
+  z-index: 80; /* below img-toolbar (2000) but above board items */
+  width: 100%;
+  background: rgba(16,12,8,.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  gap: 8px;
+}
+.mob-status-boards{ display: flex; gap: 5px; align-items: center; }
+.mob-status-boards .tab-btn{ width: 28px; height: 28px; font-size: 11px; }
+.mob-status-save{
+  font-family: var(--font-m); font-size: 10px;
+  color: var(--muted); letter-spacing: .05em;
+  flex: 1; text-align: center;
+}
+.mob-lang .lang-btn{ width: 26px !important; height: 26px !important; }
+.mob-lang .lang-flag{ width: 20px; height: 20px; }
+
+@media (max-width: 480px) and (pointer: coarse) {
+  /* ── Hide desktop sidebar & bottom bar elements ── */
+  .sidebar{ display: none !important; }
+  :root{
+    --sb-w: 0px;
+    --bb-h: 0px; /* bottom bar hidden on mobile */
   }
+  .bottombar{ display: none !important; }
 
-  /* ── Sidebar collapses to bottom FAB bar ── */
-  :root{ --sb-w: 0px; }
+  /* ── Show mobile elements ── */
+  .mobile-fab-bar{ display: block; }
+  .mob-status-bar{ display: flex; }
 
-  .sidebar{
-    /* Hide vertical sidebar on mobile */
-    display: none !important;
-  }
-
-  /* Bottom floating action bar — Canva-style */
-  .mobile-fab-bar{
-    display: flex !important;
-  }
-
-  /* Board uses full width */
+  /* ── Board wrapper: full screen minus top status (40px) and bottom toolbar (62px) ── */
   .board-wrapper{
+    top: 0 !important;
     right: 0 !important;
-    bottom: calc(var(--bb-h) + var(--mob-fab-h)) !important;
+    bottom: 62px !important;
+    left: 0 !important;
   }
 
-  /* Bottom bar compact on mobile */
-  :root{ --bb-h: 38px; --mob-fab-h: 58px; }
-  .version-badge{ display: none; }
-  .current-board-label{ display: none; }
-  .board-tabs-inline .tab-btn{ width: 22px; height: 22px; font-size: 10px; }
+  /* ── Caption scales with viewport ── */
+  .pol-caption{
+    font-size: clamp(9px, 2.6vw, 13px) !important;
+    letter-spacing: .05em;
+  }
 
-  /* Image toolbar smaller on mobile */
+  /* ── Image toolbar compact ── */
   .img-toolbar{ padding: 4px 6px; gap: 1px; border-radius: 24px; }
   .itb-btn{ width: 32px; height: 32px; }
   .itb-btn svg{ width: 14px; height: 14px; }
-}
 
-/* ── Mobile FAB bar (hidden on desktop) ── */
-.mobile-fab-bar{
-  display: none; /* shown via media query above */
-  position: fixed;
-  bottom: var(--bb-h);
-  left: 0; right: 0;
-  height: var(--mob-fab-h, 58px);
-  background: var(--panel);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border);
-  align-items: center;
-  justify-content: space-around;
-  padding: 0 8px;
-  z-index: 899;
+  /* ── Board default black background on mobile ── */
+  .board{ background-color: #000 !important; }
+  .board.bg-black{ background-color: #000 !important; }
 }
-.mob-btn{
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  background: transparent; border: none; color: rgba(245,240,232,.7);
-  cursor: pointer; padding: 6px 10px; border-radius: 8px;
-  transition: background .15s, color .15s; flex: 1;
-}
-.mob-btn svg{ width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.mob-btn span{ font-family: var(--font-m); font-size: 9px; letter-spacing: .06em; color: var(--muted); }
-.mob-btn:hover, .mob-btn:active{ background: rgba(201,169,110,.15); color: var(--cream); }
-.mob-btn span{ color: inherit; opacity: .7; }
